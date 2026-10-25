@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pumpkin Stencil Studio</title>
+<style>
+:root{--bg:#fbf6ef;--fg:#2a1d12;--pn:#fff;--ln:#e4d6c3;--ac:#e8710a;--on:#fff;--mu:#7a6650;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17120e;--fg:#f3e8d8;--pn:#241c15;--ln:#3a2e22;--ac:#ff8a1f;--on:#1a1209;--mu:#b8a58c}}
+:root[data-theme="dark"]{--bg:#17120e;--fg:#f3e8d8;--pn:#241c15;--ln:#3a2e22;--ac:#ff8a1f;--on:#1a1209;--mu:#b8a58c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px 4px}
+h1{margin:0;font-size:20px}
+header p{margin:2px 0 0;color:var(--mu);font-size:13px}
+main{display:flex;flex-wrap:wrap;gap:16px;padding:12px 16px 24px;align-items:flex-start}
+.stage{flex:1 1 320px;max-width:560px;background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:8px}
+canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair;border-radius:6px;background:#fff}
+.panel{flex:1 1 260px;max-width:380px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:12px}
+.card h2{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,.btn{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:7px 11px;cursor:pointer}
+button.on{background:var(--ac);color:var(--on);border-color:var(--ac);font-weight:600}
+button:disabled{opacity:.4;cursor:default}
+input[type=range]{flex:1;min-width:120px;accent-color:var(--ac)}
+label{display:flex;gap:6px;align-items:center;font-size:14px}
+#status{font-size:13px;color:var(--mu);min-height:18px}
+#status.bad{color:#d33}
+small{color:var(--mu)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}
+#modal.show{display:flex}
+#modal div{background:var(--pn);border-radius:12px;padding:12px;max-width:520px;max-height:100%;overflow:auto;text-align:center}
+#modal img{max-width:100%;border:1px solid var(--ln);background:#fff}
+select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:6px}
+#sheet{display:none}
+@media print{:root{padding:0!important}html,body{background:#fff!important;margin:0}body>*:not(#sheet){display:none!important}#sheet{display:flex!important;flex-direction:column;align-items:center;color:#000;font-family:system-ui,sans-serif}#sheet img{display:block}}
+</style><style id="pg"></style></head><body>
+<header><h1>🎃 Pumpkin Stencil Studio</h1>
+<p>Black areas are cut out; white areas stay as pumpkin skin. Draw directly on the stencil to change it.</p></header>
+<main>
+<div class="stage"><canvas id="cv" width="600" height="771"></canvas></div>
+<div class="panel">
+<div class="card"><h2>Draw</h2>
+<div class="row"><button id="tCut" class="on">Cut (black)</button><button id="tSkin">Skin / bridge (white)</button></div>
+<div class="row" style="margin-top:8px"><label style="flex:1">Size <input id="size" type="range" min="3" max="70" value="16"><span id="sv">16</span></label></div>
+<div class="row" style="margin-top:8px"><label><input id="line" type="checkbox"> Straight lines</label></div>
+<div class="row" style="margin-top:8px"><button id="undo">Undo</button><button id="redo">Redo</button></div></div>
+<div class="card"><h2>Check</h2>
+<div class="row"><button id="isl">Find loose pieces</button><button id="glow">Glow preview</button></div>
+<div id="status" style="margin-top:8px">Loose pieces (red) would fall out. Add a white bridge to hold them.</div></div>
+<div class="card"><h2>Start from</h2>
+<div class="row"><button id="orig">Piranha Plant</button><button id="blank">Blank</button>
+<button id="imp">Import image…</button><input id="file" type="file" accept="image/*" hidden></div>
+<div class="row" id="thr" style="margin-top:8px;display:none"><label style="flex:1">Threshold <input id="tv" type="range" min="30" max="230" value="128"></label></div>
+<small>Imported pictures are turned into black and white; use high-contrast shapes.</small></div>
+<div class="card"><h2>Print</h2>
+<div class="row"><label>Paper <select id="paper"><option>A4</option><option>Letter</option></select></label>
+<label>Style <select id="pstyle"><option value="ink">Ink saver (outline + hatch)</option><option value="dash">Dashed outline (poke through)</option><option value="solid">Solid black</option></select></label></div>
+<div class="row" style="margin-top:8px"><label style="flex:1">Size <input id="pct" type="range" min="30" max="100" value="100"><span id="pv">100%</span></label></div>
+<div class="row" style="margin-top:8px"><label><input id="cap" type="checkbox" checked> Add legend and size</label></div>
+<div class="row" style="margin-top:8px"><button id="print" class="on">Print</button><button id="save">Save image</button></div>
+<small>Ink saver prints only the cut outlines with light hatching. If the print dialog doesn’t open, use Save image and print that file instead.</small></div>
+</div></main>
+<div id="sheet"></div>
+<div id="modal"><div><p>Press and hold (or right-click) the image to save it, then print at the size of your pumpkin.</p><img id="out" alt="Stencil"><p><button id="close">Close</button></p></div></div>
+<script>
+const W=600,H=771,$=i=>document.getElementById(i);
+const cv=$('cv'),cx=cv.getContext('2d');
+const ed=document.createElement('canvas');ed.width=W;ed.height=H;
+const ec=ed.getContext('2d',{willReadFrequently:true});
+const ORIG="data:image/png;base64,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";
+let tool='cut',drawing=false,start=null,snap=null,showIsl=false,glow=false,loose=null,src=null;
+let undo=[],redo=[];
+function fill(c){ec.fillStyle=c;ec.fillRect(0,0,W,H)}
+function snapshot(){return ec.getImageData(0,0,W,H)}
+function push(){undo.push(snapshot());if(undo.length>40)undo.shift();redo=[];btns()}
+function btns(){$('undo').disabled=!undo.length;$('redo').disabled=!redo.length}
+function findLoose(){
+  const d=ec.getImageData(0,0,W,H).data,seen=new Uint8Array(W*H),res=new Uint8Array(W*H);
+  const skin=i=>d[i*4]>140;
+  function flood(s,mark){const st=[s];seen[s]=1;const px=[];
+    while(st.length){const p=st.pop();px.push(p);const x=p%W,y=(p/W)|0;
+      for(const q of [x>0?p-1:-1,x<W-1?p+1:-1,y>0?p-W:-1,y<H-1?p+W:-1]){
+        if(q>=0&&!seen[q]&&skin(q)){seen[q]=1;st.push(q)}}}
+    return px}
+  for(let x=0;x<W;x++){for(const y of [0,H-1]){const p=y*W+x;if(!seen[p]&&skin(p))flood(p)}}
+  for(let y=0;y<H;y++){for(const x of [0,W-1]){const p=y*W+x;if(!seen[p]&&skin(p))flood(p)}}
+  let n=0;
+  for(let p=0;p<W*H;p++)if(!seen[p]&&skin(p)){const px=flood(p);if(px.length>=40){n++;for(const q of px)res[q]=1}}
+  loose=res;return n}
+function update(){
+  if(showIsl){const n=findLoose();const s=$('status');
+    s.className=n?'bad':'';
+    s.textContent=n?n+(n==1?' loose piece':' loose pieces')+' shown in red. Draw a white bridge to the outer skin.':'No loose pieces. Every white area is connected to the pumpkin.';}
+  render()}
+function render(){
+  if(glow&&!drawing){
+    const g=cx.createRadialGradient(W/2,H/2,40,W/2,H/2,W*.8);
+    g.addColorStop(0,'#f08a1c');g.addColorStop(1,'#7a3205');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+    const d=ec.getImageData(0,0,W,H),m=document.createElement('canvas');m.width=W;m.height=H;
+    const mc=m.getContext('2d'),o=mc.createImageData(W,H);
+    for(let i=0;i<W*H;i++){o.data[i*4]=255;o.data[i*4+1]=232;o.data[i*4+2]=140;o.data[i*4+3]=255-d.data[i*4]}
+    mc.putImageData(o,0,0);
+    cx.save();cx.filter='blur(18px)';cx.globalAlpha=.9;cx.drawImage(m,0,0);cx.restore();
+    cx.drawImage(m,0,0);
+  }else{
+    cx.drawImage(ed,0,0);
+    if(showIsl&&loose){const o=cx.getImageData(0,0,W,H),dd=o.data;
+      for(let i=0;i<W*H;i++)if(loose[i]){dd[i*4]=235;dd[i*4+1]=60;dd[i*4+2]=60}
+      cx.putImageData(o,0,0)}
+  }}
+function pos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+function stroke(a,b){ec.strokeStyle=tool=='cut'?'#000':'#fff';ec.lineWidth=+$('size').value;
+  ec.lineCap=ec.lineJoin='round';ec.beginPath();ec.moveTo(a.x,a.y);ec.lineTo(b.x+.01,b.y);ec.stroke()}
+let last=null;
+cv.addEventListener('pointerdown',e=>{e.preventDefault();cv.setPointerCapture(e.pointerId);
+  glow=false;$('glow').classList.remove('on');
+  push();drawing=true;start=last=pos(e);snap=$('line').checked?snapshot():null;stroke(start,start);render()});
+cv.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);
+  if(snap){ec.putImageData(snap,0,0);stroke(start,p)}else{stroke(last,p);last=p}render()});
+const end=()=>{if(!drawing)return;drawing=false;snap=null;update()};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+function setTool(t){tool=t;$('tCut').classList.toggle('on',t=='cut');$('tSkin').classList.toggle('on',t=='skin')}
+$('tCut').onclick=()=>setTool('cut');$('tSkin').onclick=()=>setTool('skin');
+$('size').oninput=e=>$('sv').textContent=e.target.value;
+$('undo').onclick=()=>{if(!undo.length)return;redo.push(snapshot());ec.putImageData(undo.pop(),0,0);btns();update()};
+$('redo').onclick=()=>{if(!redo.length)return;undo.push(snapshot());ec.putImageData(redo.pop(),0,0);btns();update()};
+$('isl').onclick=()=>{showIsl=!showIsl;$('isl').classList.toggle('on',showIsl);glow=false;$('glow').classList.remove('on');
+  if(!showIsl){$('status').className='';$('status').textContent='Loose pieces (red) would fall out. Add a white bridge to hold them.'}update()};
+$('glow').onclick=()=>{glow=!glow;$('glow').classList.toggle('on',glow);render()};
+function loadOrig(){const im=new Image();im.onload=()=>{push();fill('#fff');ec.drawImage(im,0,0,W,H);src=null;$('thr').style.display='none';update()};im.src=ORIG}
+$('orig').onclick=loadOrig;
+$('blank').onclick=()=>{push();fill('#fff');src=null;$('thr').style.display='none';update()};
+$('imp').onclick=()=>$('file').click();
+function thresh(t){if(!src)return;const o=ec.createImageData(W,H);
+  for(let i=0;i<W*H;i++){const l=.3*src.data[i*4]+.59*src.data[i*4+1]+.11*src.data[i*4+2],v=l<t?0:255;
+    o.data[i*4]=o.data[i*4+1]=o.data[i*4+2]=v;o.data[i*4+3]=255}
+  ec.putImageData(o,0,0)}
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();
+  im.onload=()=>{push();fill('#fff');const s=Math.min(W/im.width,H/im.height)*.92,w=im.width*s,h=im.height*s;
+    ec.drawImage(im,(W-w)/2,(H-h)/2,w,h);src=snapshot();$('thr').style.display='flex';thresh(+$('tv').value);update();URL.revokeObjectURL(im.src)};
+  im.src=URL.createObjectURL(f);e.target.value=''};
+$('tv').oninput=e=>{thresh(+e.target.value);update()};
+function printCanvas(style){
+  const S=3,w=W*S,h=H*S,c=document.createElement('canvas');c.width=w;c.height=h;
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(ed,0,0,w,h);
+  const d=x.getImageData(0,0,w,h),p=d.data,cut=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++)cut[i]=p[i*4]<128?1:0;
+  const t=5,edge=new Uint8Array(w*h);
+  if(style!=='solid')for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){const i=y*w+xx;
+    if(cut[i]&&(xx<t||xx>=w-t||y<t||y>=h-t||!cut[i-t]||!cut[i+t]||!cut[i-t*w]||!cut[i+t*w]))edge[i]=1}
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){const i=y*w+xx;let v=255;
+    if(cut[i]){if(style==='solid')v=0;
+      else if(edge[i])v=(style==='dash'&&((xx+y)/22|0)%2)?255:0;
+      else v=((xx+y)%16<2)?170:255}
+    p[i*4]=p[i*4+1]=p[i*4+2]=v;p[i*4+3]=255}
+  x.putImageData(d,0,0);return c}
+$('pct').oninput=e=>$('pv').textContent=e.target.value+'%';
+function buildSheet(cb){
+  const A=$('paper').value==='A4'?[210,297]:[215.9,279.4],m=12,cap=$('cap').checked,ratio=H/W;
+  const maxW=A[0]-2*m,maxH=A[1]-2*m-(cap?16:0),w=Math.min(maxW,maxH/ratio)*$('pct').value/100,h=w*ratio;
+  $('pg').textContent='@page{size:'+A[0]+'mm '+A[1]+'mm;margin:0}';
+  const s=$('sheet');s.style.cssText='width:'+A[0]+'mm;height:'+A[1]+'mm;padding:'+m+'mm;box-sizing:border-box';s.innerHTML='';
+  const img=new Image();img.style.cssText='width:'+w+'mm;height:'+h+'mm';
+  img.onload=cb;img.src=printCanvas($('pstyle').value).toDataURL('image/png');s.appendChild(img);
+  if(cap){const q=document.createElement('p');q.style.cssText='margin:4mm 0 0;font-size:10pt;text-align:center';
+    q.textContent='Black or hatched = cut out · White = leave skin · Printed '+(w/10).toFixed(1)+' × '+(h/10).toFixed(1)+' cm';s.appendChild(q)}}
+$('print').onclick=()=>buildSheet(()=>{try{window.print()}catch(e){}});
+$('save').onclick=()=>{$('out').src=printCanvas($('pstyle').value).toDataURL('image/png');$('modal').classList.add('show')};
+$('close').onclick=()=>$('modal').classList.remove('show');
+loadOrig();setTimeout(()=>{undo=[];btns()},150);btns();
+</script></body></html>
